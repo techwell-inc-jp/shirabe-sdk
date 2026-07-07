@@ -1,4 +1,4 @@
-# shirabe
+# shirabe-sdk
 
 Official thin SDK for [Shirabe](https://shirabe.dev) — the Japan-specific, AI-native API platform.
 Zero runtime dependencies. Works on Node 18+, Cloudflare Workers, Deno, and modern browsers.
@@ -7,13 +7,13 @@ The headline is **composite enrich**: normalize a messy customer record across f
 identifiers — **address, personal name, corporate number, calendar date** — in a single call.
 
 ```bash
-npm install shirabe
+npm install shirabe-sdk
 ```
 
 ## Quick start
 
 ```ts
-import { ShirabeClient } from "shirabe";
+import { ShirabeClient } from "shirabe-sdk";
 
 const shirabe = new ShirabeClient({ apiKey: process.env.SHIRABE_API_KEY });
 
@@ -49,7 +49,7 @@ See <https://shirabe.dev/pricing> for SKUs and an AI-callable quote endpoint.
 Non-2xx responses throw `ShirabeError` with the parsed body attached:
 
 ```ts
-import { ShirabeError } from "shirabe";
+import { ShirabeError } from "shirabe-sdk";
 
 try {
   await shirabe.enrich({ address: "..." });

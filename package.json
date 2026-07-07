@@ -1,5 +1,5 @@
 {
-  "name": "shirabe",
+  "name": "shirabe-sdk",
   "version": "0.1.0",
   "description": "Official thin SDK for the Shirabe Japan-specific AI-native API platform — composite enrich (address, name, corporate number, calendar) in one call. Zero runtime dependencies.",
   "type": "module",
