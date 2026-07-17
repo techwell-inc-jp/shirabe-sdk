@@ -62,6 +62,40 @@ try {
 }
 ```
 
+## Agent framework tools (Vercel AI SDK / LangChain)
+
+Ready-made tool definitions let an LLM agent call Shirabe directly — so it can look up an
+authoritative Japanese name reading, corporate number, or address instead of hallucinating one.
+The framework packages (`ai`, `@langchain/core`) are **optional peer dependencies**; the core stays
+zero-dependency.
+
+**Vercel AI SDK** (`shirabe-sdk/ai`):
+
+```ts
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
+import { shirabeAITools } from "shirabe-sdk/ai";
+
+const { text } = await generateText({
+  model: openai("gpt-4o"),
+  tools: shirabeAITools({ apiKey: process.env.SHIRABE_API_KEY }), // apiKey optional for anonymous tools
+  prompt: "東海林裕子 さんの氏名の読みを調べて。",
+});
+```
+
+**LangChain** (`shirabe-sdk/langchain`):
+
+```ts
+import { shirabeLangChainTools } from "shirabe-sdk/langchain";
+import { ChatOpenAI } from "@langchain/openai";
+
+const model = new ChatOpenAI({ model: "gpt-4o" }).bindTools(shirabeLangChainTools());
+```
+
+Both expose the same seven tools: `shirabe_normalize_address`, `shirabe_split_name`,
+`shirabe_name_reading`, `shirabe_validate_corporation`, `shirabe_lookup_corporation`,
+`shirabe_calendar`, and `shirabe_enrich`.
+
 ## Other endpoints
 
 The SDK also exposes thin wrappers for individual APIs:
@@ -69,6 +103,10 @@ The SDK also exposes thin wrappers for individual APIs:
 ```ts
 await shirabe.calendar("2026-07-01", { categories: ["wedding"] }); // 六曜・暦注・用途別スコア
 await shirabe.normalizeAddress("東京都港区六本木6-10-1");           // ABR 準拠の住所正規化
+await shirabe.splitName("山田太郎");                                // 姓名分割
+await shirabe.nameReading("東海林裕子");                            // 氏名の読み(異読 candidates 付き)
+await shirabe.validateCorporation("1234567890123");               // 法人番号の形式・checksum・実在
+await shirabe.lookupCorporation("1234567890123");                 // 法人番号 → 商号・所在地
 await shirabe.request("GET", "/api/v1/...");                       // low-level escape hatch
 ```
 

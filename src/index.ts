@@ -60,6 +60,14 @@ export interface ShirabeClientOptions {
   baseUrl?: string;
   /** fetch 実装の注入(グローバル fetch が無い環境向け)。 */
   fetch?: typeof fetch;
+  /**
+   * 全リクエストに付与する既定ヘッダ。
+   *
+   * tool wrapper(`shirabe-sdk/ai` / `shirabe-sdk/langchain`)は利用元チャネルを
+   * サーバー側の計測に伝えるため `X-Client`(例 `ai-sdk` / `langchain`)を注入する。
+   * `X-API-Key` / `Content-Type` はリクエスト側の指定が優先される。
+   */
+  defaultHeaders?: Record<string, string>;
 }
 
 /**
@@ -104,10 +112,12 @@ export class ShirabeClient {
   private readonly baseUrl: string;
   private readonly apiKey?: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly defaultHeaders: Record<string, string>;
 
   constructor(options: ShirabeClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.apiKey = options.apiKey;
+    this.defaultHeaders = { ...options.defaultHeaders };
     const f = options.fetch ?? globalThis.fetch;
     if (typeof f !== "function") {
       throw new Error(
@@ -169,6 +179,60 @@ export class ShirabeClient {
   }
 
   /**
+   * 氏名を姓と名に分割する(IPAdic ベース)。
+   *
+   * @param name フルネーム(例 "山田太郎")
+   * @param options AbortSignal
+   */
+  splitName(name: string, options: { signal?: AbortSignal } = {}): Promise<unknown> {
+    return this.request("POST", "/api/v1/text/name-split", {
+      body: { name },
+      signal: options.signal,
+    });
+  }
+
+  /**
+   * 氏名の読み(ふりがな)を推定する(IPAdic + JMnedict 2 段照合、異読 candidates 付き)。
+   *
+   * 読みが一意に定まらない前提で、最頻の読み + 収載読みの全網羅 + 出典を返す。
+   *
+   * @param name フルネーム(例 "東海林裕子")
+   * @param options AbortSignal
+   */
+  nameReading(name: string, options: { signal?: AbortSignal } = {}): Promise<unknown> {
+    return this.request("POST", "/api/v1/text/name-reading", {
+      body: { name },
+      signal: options.signal,
+    });
+  }
+
+  /**
+   * 法人番号(13 桁)の形式・checksum(mod 9)・実在を 3 段判定する。
+   *
+   * @param lawId 法人番号(13 桁)
+   * @param options AbortSignal
+   */
+  validateCorporation(lawId: string, options: { signal?: AbortSignal } = {}): Promise<unknown> {
+    return this.request("POST", "/api/v1/corporation/validate", {
+      body: { law_id: lawId },
+      signal: options.signal,
+    });
+  }
+
+  /**
+   * 法人番号(13 桁)から法人情報(商号・所在地・法人種別・閉鎖情報)を lookup する。
+   *
+   * @param lawId 法人番号(13 桁)
+   * @param options AbortSignal
+   */
+  lookupCorporation(lawId: string, options: { signal?: AbortSignal } = {}): Promise<unknown> {
+    return this.request("POST", "/api/v1/corporation/lookup", {
+      body: { law_id: lawId },
+      signal: options.signal,
+    });
+  }
+
+  /**
    * 低レベルリクエスト(任意の Shirabe エンドポイントを叩く escape hatch)。
    *
    * @throws {ShirabeError} 非 2xx 時(body を保持)
@@ -178,7 +242,7 @@ export class ShirabeClient {
     path: string,
     options: { body?: unknown; signal?: AbortSignal } = {}
   ): Promise<T> {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = { ...this.defaultHeaders };
     if (this.apiKey) headers["X-API-Key"] = this.apiKey;
     const init: RequestInit = { method, headers, signal: options.signal };
     if (options.body !== undefined) {
